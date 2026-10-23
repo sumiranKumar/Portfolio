@@ -65,18 +65,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const appPages = document.querySelectorAll('.app-page');
 
+  // Support both root domains (Vercel/Netlify) and repository subpaths (GitHub Pages)
+  function getBasePath() {
+    const p = window.location.pathname;
+    if (p.toLowerCase().startsWith('/portfolio')) {
+      return '/Portfolio';
+    }
+    return '';
+  }
+
   function getCleanRoute() {
     // If user arrived with hash like /#/projects or #projects, clean it
     if (window.location.hash) {
       const hashPart = window.location.hash.replace(/^#\/?/, '').trim();
       if (hashPart) {
-        const cleanPath = '/' + hashPart;
+        const cleanPath = getBasePath() + (hashPart ? '/' + hashPart : '/');
         window.history.replaceState(null, '', cleanPath);
         return hashPart.toLowerCase();
       }
     }
-    // Standard pathname like /projects -> "projects"
-    const path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+    // Standard pathname like /projects -> "projects" or /Portfolio/projects -> "projects"
+    let path = window.location.pathname.replace(/^\/+|\/+$/g, '').toLowerCase().trim();
+    if (path.startsWith('portfolio/')) {
+      path = path.slice('portfolio/'.length).trim();
+    } else if (path === 'portfolio') {
+      path = '';
+    }
     return path;
   }
 
@@ -102,7 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
     navLinks.forEach(link => {
       link.classList.remove('active');
       const href = link.getAttribute('href') || '';
-      const linkRoute = href.replace(/^#?\/?|\/+$/g, '').toLowerCase().trim();
+      let linkRoute = href.replace(/^#?\/?|\/+$/g, '').toLowerCase().trim();
+      if (linkRoute.startsWith('portfolio/')) {
+        linkRoute = linkRoute.slice('portfolio/'.length).trim();
+      } else if (linkRoute === 'portfolio') {
+        linkRoute = '';
+      }
       if (
         ((cleanRoute === '' || cleanRoute === 'home' || cleanRoute === 'hero') && (linkRoute === '' || linkRoute === 'home')) ||
         (cleanRoute === linkRoute) ||
@@ -153,14 +172,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Check if it's an internal route link (e.g. "/", "/projects", "/about", or "#/projects")
-    const clean = href.replace(/^#?\/?/, '').toLowerCase().trim();
+    let clean = href.replace(/^#?\/?/, '').toLowerCase().trim();
+    if (clean.startsWith('portfolio/')) {
+      clean = clean.slice('portfolio/'.length).trim();
+    } else if (clean === 'portfolio') {
+      clean = '';
+    }
+
     if (clean in routeMap || href === '/' || href.startsWith('/')) {
       e.preventDefault();
-      const targetUrl = href.startsWith('/') ? href : ('/' + clean);
+      const basePath = getBasePath();
+      const targetUrl = basePath + (clean ? '/' + clean : '/');
       if (window.location.pathname !== targetUrl) {
         window.history.pushState(null, '', targetUrl);
+        renderCurrentRoute();
       }
-      renderCurrentRoute();
     }
   });
 
